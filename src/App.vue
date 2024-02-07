@@ -1,15 +1,22 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
+  <div>
+  
   <HelloWorld msg="Welcome to Your Vue.js App"/>
+  
+  </div>
 </template>
 
 <script>
 import HelloWorld from './components/HelloWorld.vue'
+//import DossierView from './components/DossierView.vue'
+//import DossierView from "./components/DossierView.vue"
+import 'bootstrap/dist/css/bootstrap.min.css'
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    HelloWorld,
+    
   }
 }
 </script>

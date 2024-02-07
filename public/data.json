@@ -1,0 +1,20 @@
+[
+    {
+      "matricule": "12345",
+      "password": "azerty123",
+      "name": "John Doe",
+      "department": "Développement"
+    },
+    {
+      "matricule": "67890",
+      "password": "qwerty456",
+      "name": "Jane Smith",
+      "department": "Marketing"
+    },
+    {
+      "matricule": "13579",
+      "password": "azerty456",
+      "name": "Robert Johnson",
+      "department": "Ressources humaines"
+    }
+  ]
