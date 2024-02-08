@@ -8,5 +8,8 @@ module.exports = defineConfig({
       definitions[0]['__VUE_OPTIONS_API__'] = true;
       return definitions;
     });
+  },
+  devServer: {
+    historyApiFallback: true
   }
 });

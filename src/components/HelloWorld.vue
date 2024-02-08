@@ -55,12 +55,6 @@ export default {
   },
   methods: {
     handleConnexion() {
-      if (!this.matricule || !this.password) {
-      // Afficher un message d'erreur si les champs sont vides
-      this.showError = true;
-      return;
-      }
-    
       // Utilisez les valeurs des variables liées
       var matricule = this.matricule;
       var password = this.password;
@@ -69,8 +63,12 @@ export default {
       var user = data.find(item => item.matricule === matricule && item.password === password);
       
       if (user) {
+        // Enregistrer l'état d'authentification
+        localStorage.setItem('isAuthenticated', true);
         // Redirigez vers la page DossierView.vue
-        this.$router.push('/DossierView');
+        this.$router.push('/dossier');
+        // Émettre un événement d'authentification
+        this.$emit('authenticated');
       } else {
         // Affichez un message d'erreur
         this.showError = true;
@@ -78,4 +76,4 @@ export default {
     }
     }
   }
-</script>
+  </script>

@@ -19,7 +19,7 @@
         </thead>
         <tbody>
           <tr v-for="employee in filteredEmployees" :key="employee.id">
-            <td>{{ employee.name }}</td>
+            <td>{{ employee.name }} </td>
             <td>{{ employee.department }}</td>
           </tr>
         </tbody>
@@ -60,8 +60,17 @@
       }
     },
     created() {
-      this.employees = data;
+    // Vérifier si l'utilisateur est authentifié
+    const isAuthenticated = localStorage.getItem('isAuthenticated');
+    if (!isAuthenticated) {
+    // Rediriger vers la page de connexion
+    this.$router.push('/');
+    } else {
+    // Récupérer les données nécessaires ou effectuer toute autre logique
+    this.employees = data;
     }
+  }
+    
   };
   </script>
   
