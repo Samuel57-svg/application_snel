@@ -10,6 +10,13 @@ module.exports = defineConfig({
     });
   },
   devServer: {
+    proxy: {
+      '/gestionnaire': {
+        target: 'http://192.168.137.213:3000',
+        changeOrigin: true,
+      },
+    },
     historyApiFallback: true
-  }
+  },
+
 });

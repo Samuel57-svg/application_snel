@@ -14,10 +14,11 @@
               <h5 class="card-title">Connexion</h5>
             </div>
             <div class="card-body">
+              <div v-if="showError" class="card-footer text-danger">agentID ou mot de passe incorrect</div>
               <form id="connexion-form" @submit.prevent="handleConnexion">
                 <div class="mb-3">
-                  <label for="matricule" class="form-label">Numéro matricule</label>
-                  <input type="text" id="matricule" name="matricule" class="form-control" placeholder="Entrez votre numéro matricule" v-model="matricule">
+                  <label for="agentID" class="form-label">Numéro agentID</label>
+                  <input type="text" id="agentID" name="agentID" class="form-control" placeholder="Entrez votre numéro agentID" v-model="agentID">
                 </div>
                 <div class="mb-3">
                   <label for="password" class="form-label">Mot de passe</label>
@@ -29,7 +30,7 @@
                 <button type="submit" class="btn btn-primary">Se connecter</button>
               </form>
             </div>
-            <div v-if="showError" class="card-footer text-danger">Matricule ou mot de passe incorrect</div>
+            
           </div>
         </div>
       </div>
@@ -38,7 +39,8 @@
 </template>
 
 <script>
-import data from '@/../public/data.json';
+import data from '@/../public/data1.json';
+//import axios from 'axios';
 
 export default {
   name: 'HelloWorld',
@@ -47,33 +49,68 @@ export default {
   },
   data() {
     return {
-      matricule: '',
+      agentID: '',
       password: '',
       showPassword: false,
       showError: false
     };
   },
-  methods: {
-    handleConnexion() {
+  methods: { /*
+    async handleConnexion() {
+      const url = 'http://192.168.137.213:3000/gestionnaire';
+      try {
+        const response = await fetch(url);
+        const users = response.data;
+        const { agentID, password } = this;
+  
+        const user = users.find(user => user.agentID === agentID && user.password === password);
+        */
+        handleConnexion() {
       // Utilisez les valeurs des variables liées
       var matricule = this.matricule;
       var password = this.password;
       
       // Comparez les informations avec les données du fichier JSON
       var user = data.find(item => item.matricule === matricule && item.password === password);
-      
-      if (user) {
-        // Enregistrer l'état d'authentification
-        localStorage.setItem('isAuthenticated', true);
-        // Redirigez vers la page DossierView.vue
-        this.$router.push('/dossier');
-        // Émettre un événement d'authentification
-        this.$emit('authenticated');
-      } else {
-        // Affichez un message d'erreur
-        this.showError = true;
-      }
-    }
+
+
+
+        if (user) {
+          localStorage.setItem('isAuthenticated', true);
+          this.$router.push('/dossier');
+          this.$emit('authenticated');
+        } else {
+          this.showError = true;
+        }
+        /*
+      } catch (error) {
+        console.log(error);
+      } */
+    },
+    togglePassword() {
+    this.showPassword = !this.showPassword;
+  },
     }
   }
   </script>
+
+<style>
+
+.eye-icon {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+}
+
+.eye-icon span {
+  cursor: pointer;
+}
+
+.error-message {
+  color: red;
+  margin-top: -10px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+</style>

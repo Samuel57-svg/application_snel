@@ -1,16 +1,7 @@
-/* */
-//import Vue from 'vue';
-//import VueRouter from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-
-
-
-//Vue.use(VueRouter);
-
 import HelloWorld from '@/components/HelloWorld.vue';
 import DossierView from '@/components/DossierView.vue';
-
-
+import DocumentView from '@/components/DocumentView.vue';
 
 
 const routes = [
@@ -23,18 +14,17 @@ const routes = [
     path: '/dossier',
     name: 'DossierView',
     component: DossierView
+  },
+  {
+    path: '/document/:name',
+    name: 'DocumentView',
+    component: DocumentView
   }
 ];
 
-/*
-const router = new VueRouter({
-    mode: 'history',
-    base: process.env.BASE_URL,
-    routes
-}); */
-
 const router = createRouter({
   history: createWebHistory(),
+  mode: 'history',
   base: process.env.BASE_URL,
   routes
 });
