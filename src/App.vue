@@ -1,15 +1,14 @@
 <template>
   <div>
     <HelloWorld v-if="!isAuthenticated" @authenticated="handleAuthenticated" />
-    <DossierView v-else />
-    <router-view v-if="isAuthenticated" />
+    <router-view v-else />
     
   </div>
 </template>
 
 <script>
 import HelloWorld from './components/HelloWorld.vue'
-import DossierView from './components/DossierView.vue'
+//import DossierView from './components/DossierView.vue'
 //import DocumentView from './components/DocumentView.vue'
 import 'bootstrap/dist/css/bootstrap.min.css'
 
@@ -18,7 +17,6 @@ export default {
   name: 'App',
   components: {
     HelloWorld,
-    DossierView
     
   },
   data() {

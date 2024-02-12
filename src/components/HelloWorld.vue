@@ -55,24 +55,34 @@ export default {
       showError: false
     };
   },
-  methods: { /*
+  methods: { /* 
     async handleConnexion() {
       const url = 'http://192.168.137.213:3000/gestionnaire';
       try {
         const response = await fetch(url);
-        const users = response.data;
-        const { agentID, password } = this;
-  
-        const user = users.find(user => user.agentID === agentID && user.password === password);
-        */
-        handleConnexion() {
-      // Utilisez les valeurs des variables liées
-      var matricule = this.matricule;
-      var password = this.password;
-      
-      // Comparez les informations avec les données du fichier JSON
-      var user = data.find(item => item.matricule === matricule && item.password === password);
+        const usersPromise = response.json();
 
+        usersPromise.then(users => {
+        const { agentID, password } = this;
+        let user = null;
+
+        for (let i = 0; i < users.length; i++) {
+        if (users[i].agentID === agentID && users[i].password === password) {
+          user = users[i];
+          break;
+          }
+        }
+         */
+
+        
+    handleConnexion() {
+        // Utilisez les valeurs des variables liées
+        var matricule = this.matricule;
+        var password = this.password;
+      
+        // Comparez les informations avec les données du fichier JSON
+        var user = data.find(item => item.matricule === matricule && item.password === password);
+          
 
 
         if (user) {
@@ -81,17 +91,17 @@ export default {
           this.$emit('authenticated');
         } else {
           this.showError = true;
-        }
-        /*
+      }
+      /*  
       } catch (error) {
         console.log(error);
       } */
     },
     togglePassword() {
     this.showPassword = !this.showPassword;
-  },
-    }
   }
+    }
+} 
   </script>
 
 <style>

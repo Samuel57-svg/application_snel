@@ -18,11 +18,13 @@ const routes = [
   {
     path: '/document/:name',
     name: 'DocumentView',
-    component: DocumentView
+    component: DocumentView,
+    props: true
   }
 ];
 
 const router = createRouter({
+  //history: createWebHistory(process.env.BASE_URL),
   history: createWebHistory(),
   mode: 'history',
   base: process.env.BASE_URL,

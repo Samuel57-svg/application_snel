@@ -25,11 +25,7 @@
         <tbody>
           <tr v-for="employee in filteredEmployees" :key="employee.agentID">
             <td>{{ employee.agentID }}</td>
-            <td>
-              <router-link :to="{ name: 'DocumentView', params: { name: employee.nom } }" class="text-decoration-none" @click="goToDocumentView(employee)">
-                {{ employee.nom }}
-              </router-link>
-            </td>
+            <td @click="goToDocumentView(employee)">{{ employee.nom }}</td>
             <td>{{ employee.post_nom }}</td>
             <td>{{ employee.fonction }}</td>
             <td>
@@ -46,6 +42,7 @@
 <script>
 import data from '@/../public/data.json';
 import 'bootstrap/dist/css/bootstrap.css';
+
 
 //import axios from 'axios';
 
@@ -105,13 +102,8 @@ export default {
     if (!isAuthenticated) {
       // Rediriger vers la page de connexion
       this.$router.push('/');
-    } else {
-      // Récupérer les données nécessaires ou effectuer toute autre logique
-      // Vérifier si l'utilisateur est authentifié
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    if (!isAuthenticated) {
-    // Rediriger vers la page de connexion
-    this.$router.push('/');
+    
+  
     } else {
     // Récupérer les données nécessaires ou effectuer toute autre logique
     this.employees = data;
@@ -126,7 +118,7 @@ export default {
       } */
     }
   }
-};
+;
 </script>
   
 <style scoped>
