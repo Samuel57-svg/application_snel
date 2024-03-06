@@ -1,47 +1,25 @@
 <template>
-  <div class="card">
-    <nav class="navbar fixed-top" style="background-color: #C3BDE5; text-align: center;">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="#" style="margin: 0 auto;">E-PERSONNEL SNEL</a>
-      </div>
-    </nav>
-    <img src="snel.PNG" class="card-img-bottom" alt="...">
-    <div class="container">
-      <div class="row justify-content-center mt-5">
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header">
-              <h5 class="card-title">Connexion</h5>
-            </div>
-            <div class="card-body">
-              <div v-if="showError" class="card-footer text-danger">agentID ou mot de passe incorrect</div>
-              <form id="connexion-form" @submit.prevent="handleConnexion">
-                <div class="mb-3">
-                  <label for="agentID" class="form-label">Numéro agentID</label>
-                  <input type="text" id="agentID" name="agentID" class="form-control" placeholder="Entrez votre numéro agentID" v-model="agentID">
-                </div>
-                <div class="mb-3">
-                  <label for="password" class="form-label">Mot de passe</label>
-                  <input type="password" id="password" name="password" class="form-control" placeholder="Entrez votre mot de passe" v-model="password">
-                  <input type="checkbox" id="afficher-mdp" class="form-check-input" v-model="showPassword">
-                  <label for="afficher-mdp" class="form-check-label">Afficher le mot de passe</label>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Se connecter</button>
-              </form>
-            </div>
-            
-          </div>
+  <div class="login-container">
+    <div class="login-form">
+      <h2>Connexion</h2>
+      <div v-if="showError" class="error-message">Nom d'utilisateur ou mot de passe incorrect</div>
+      <form @submit.prevent="handleConnexion">
+        <div class="form-group">
+          <label for="username">Nom d'utilisateur</label>
+          <input type="text" id="username" name="username" class="form-control" placeholder="Entrez votre nom d'utilisateur" v-model="username">
         </div>
-      </div>
+        <div class="form-group">
+          <label for="password">Mot de passe</label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="Entrez votre mot de passe" v-model="password">
+          
+        </div>
+        <button type="submit" class="btn btn-primary">Se connecter</button>
+      </form>
     </div>
   </div>
 </template>
 
 <script>
-import data from '@/../public/data1.json';
-//import axios from 'axios';
-
 export default {
   name: 'HelloWorld',
   props: {
@@ -49,78 +27,99 @@ export default {
   },
   data() {
     return {
-      agentID: '',
+      username: '',
       password: '',
       showPassword: false,
       showError: false
     };
   },
-  methods: { /* 
+  methods: {
     async handleConnexion() {
-      const url = 'http://192.168.137.213:3000/gestionnaire';
+      const url = 'http://10.1.44.176:3000/managers';
+      const { username, password , } = this;
+
       try {
         const response = await fetch(url);
-        const usersPromise = response.json();
+        if (response.ok) {
+          const data = await response.json();
 
-        usersPromise.then(users => {
-        const { agentID, password } = this;
-        let user = null;
-
-        for (let i = 0; i < users.length; i++) {
-        if (users[i].agentID === agentID && users[i].password === password) {
-          user = users[i];
-          break;
-          }
-        }
-         */
-
-        
-    handleConnexion() {
-        // Utilisez les valeurs des variables liées
-        var matricule = this.matricule;
-        var password = this.password;
-      
-        // Comparez les informations avec les données du fichier JSON
-        var user = data.find(item => item.matricule === matricule && item.password === password);
+          // Trouvez l'utilisateur avec le nom d'utilisateur donné
+          const user = data.find(item => item.username === username);
           
 
-
-        if (user) {
-          localStorage.setItem('isAuthenticated', true);
-          this.$router.push('/dossier');
-          this.$emit('authenticated');
+          if (user) {
+            // Si l'utilisateur est trouvé, vérifiez le mot de passe
+            if (user.password === password) {
+              // Si le mot de passe est correct, redirigez vers le tableau de bord
+              
+              localStorage.setItem('isAuthenticated', true);
+              this.$router.push({ name: 'DashBoard', params: { id: user.agentID } });
+              this.$emit('authenticated');
+            } else {
+              // Si le mot de passe est incorrect, affichez un message d'erreur
+              this.showError = true;
+            }
+          } else {
+            // Si l'utilisateur n'est pas trouvé, affichez un message d'erreur
+            this.showError = true;
+          }
         } else {
-          this.showError = true;
-      }
-      /*  
+          // En cas d'erreur lors de la récupération des données, affichez un message d'erreur
+          console.error('Erreur lors de la récupération des données:', response.statusText);
+        }
       } catch (error) {
-        console.log(error);
-      } */
+        // En cas d'erreur, affichez un message d'erreur
+        console.error('Une erreur s\'est produite lors de la récupération des données:', error);
+      }
     },
     togglePassword() {
-    this.showPassword = !this.showPassword;
-  }
+      this.showPassword = !this.showPassword;
     }
-} 
-  </script>
+  }
+}
+</script>
 
-<style>
-
-.eye-icon {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
+<style scoped>
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Occupies full screen height */
+  background-color: #f0f0f0; /* Light background color */
 }
 
-.eye-icon span {
-  cursor: pointer;
+.login-form {
+  width: 500px; /* Largeur du formulaire */
+  max-width: 90%; /* Largeur maximale du formulaire pour s'adapter à différents écrans */
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  font-family: 'Segoe UI', sans-serif; 
+}
+
+h2 {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 5px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px; /* Taille de police */
 }
 
 .error-message {
   color: red;
-  margin-top: -10px;
-  margin-bottom: 10px;
   text-align: center;
+  margin-top: 10px;
 }
 </style>
