@@ -35,7 +35,7 @@ export default {
   },
   methods: {
     async handleConnexion() {
-      const url = 'http://10.1.44.176:3000/managers';
+      const url = 'http://10.1.44.36:3001/agents';
       const { username, password , } = this;
 
       try {
@@ -50,10 +50,26 @@ export default {
           if (user) {
             // Si l'utilisateur est trouvé, vérifiez le mot de passe
             if (user.password === password) {
-              // Si le mot de passe est correct, redirigez vers le tableau de bord
-              
+             // Si le mot de passe est correct, déterminez le rang de l'utilisateur
+              switch (user.rang) {
+                case "agent":
+                  this.$router.push({ name: 'DocumentViewAgent', params: { id: user.agentID } });
+                  break;
+                case "manager":
+                  this.$router.push({ name: 'DashBoard', params: { id: user.agentID } });
+                  break;
+                case "drh":
+                  this.$router.push({ name: 'InterfaceDrh', params: { id: user.agentID } });
+                  break;
+                case "admin":
+                  this.$router.push({ name: 'InterfaceAdmin', params: { id: user.agentID } });
+                  break;
+                default:
+                  console.error("Rang d'utilisateur non reconnu:", user.rang);
+              }
+              // Stockez l'authentification dans le localStorage
               localStorage.setItem('isAuthenticated', true);
-              this.$router.push({ name: 'DashBoard', params: { id: user.agentID } });
+              //this.$router.push({ name: 'DashBoard', params: { id: user.agentID } });
               this.$emit('authenticated');
             } else {
               // Si le mot de passe est incorrect, affichez un message d'erreur
@@ -86,7 +102,10 @@ export default {
   align-items: center;
   height: 100vh; /* Occupies full screen height */
   background-color: #f0f0f0; /* Light background color */
+  font-family: 'Dosis', sans-serif;
+  /*font-family: 'Poppins', sans-serif; */
 }
+
 
 .login-form {
   width: 500px; /* Largeur du formulaire */

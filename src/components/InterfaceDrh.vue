@@ -1,178 +1,152 @@
 <template>
-  <div class="dossier-view-container">
+  <div class="dashboard-drh">
     <header class="dashboard-header fixed-header">
       <div class="logo-wrapper">
         <img src="/snel.png" alt="Logo IFolder">
         <span class="company-name">IFolder</span>
       </div>
-
+      
       <div class="logout-button-wrapper">
         <button class="logout-button" @click="handleLogout">Se déconnecter</button>
       </div>
     </header>
+      <!-- Barre latérale -->
+      <div class="dashboard-content">
+        <nav class="dashboard-sidebar">
+        <div class="sidebar-wrapper">
+            <!-- Titre Dashboard cliquable -->
+            <button class="dashboard-title" @click="goToDashboard">Dashboard</button>
+            <ul class="sidebar-menu">
+            <li class="sidebar-item" v-for="item in menuItems" :key="item.title">
+                <router-link :to="`/agents/drh/${this.$route.params.id}/${item.title}`" class="sidebar-link" @click="handleClick(item.title)">
+                {{ formatTitle(item.title) }}
+                <span class="category-agents">({{ totalAgentsByCategory[item.title] }} agents)</span>
+                <svg class="sidebar-arrow" viewBox="0 0 10 10">
+                    <path d="M1 1l4 4 4-4"></path>
+                </svg>
+                </router-link>
+            </li>
+            </ul>
+        </div>
+        </nav>
 
-    <nav class="dashboard-sidebar">
-      <div class="sidebar-wrapper">
-        <!-- Titre Dashboard cliquable -->
-        <button class="dashboard-title" @click="goBack">Dashboard</button>
-        <ul class="sidebar-menu">
-          <li class="sidebar-item" v-for="item in menuItems" :key="item.title">
-            <router-link :to="`/agents/${this.$route.params.id}/${item.title}`" class="sidebar-link" @click="handleClick(item.title)">
-              {{ formatTitle(item.title) }}
-              <span class="category-agents">({{ totalAgentsByCategory[item.title] }} agents)</span>
-              <svg class="sidebar-arrow" viewBox="0 0 10 10">
-                <path d="M1 1l4 4 4-4"></path>
-              </svg>
-            </router-link>
-          </li>
-        </ul>
       </div>
-    </nav>
-
-    <main class="main-content">
-      <h1 class="dossier-title">Échelon : {{ formatTitle(selectedCategory) }}</h1>
-
-      <div class="filters-container">
-        <input type="text" v-model="search" placeholder="Rechercher par nom ou matricule" class="form-control">
-        <select v-model="selectedFonction" class="form-select">
-          <option value="">Toutes les fonctions</option>
-          <option v-for="fonction in fonctions" :key="fonction" :value="fonction">{{ fonction }}</option>
-        </select>
-      </div>
-
-      <div class="table-container">
-        <table class="table table-bordered"> 
-          <thead>
-            <tr>
-              <th scope="col">Matricule</th>
-              <th scope="col">Grade</th>
-              <th scope="col">Nom</th>
-              <th scope="col">Post-nom</th>
-              <th scope="col">Fonction</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="employee in filteredEmployees" :key="employee.agentID" @click="goToDocumentView(employee)" :class="{ 'row-clicked': clickedRows[employee.agentID] }">
-              <td >{{ employee.agentID }}</td>
-              <td>{{ employee.Grade ? employee.Grade.grade_name : "Unknown"}}</td>
-              <td>{{ employee.nom }}</td>
-              <td>{{ employee.last_name }}</td>
-              <td>{{ employee.fonction }}</td>
+  
+      <!-- Contenu principal -->
+      <div class="main-content">
+          <div class="section">
+              <div class="card">
+                <canvas id="lineChart"></canvas>
+              </div>
               
-            </tr>
-          </tbody>
-        </table>
+          </div>
+          <br>
+          <br>
+          <div>
+              <div>
+                  <input type="text">
+                  <button>Recherche</button>
+              </div>
+              <table class="table">
+                  <thead>
+                      <tr>
+                          <th>Matricule de l'agent</th>
+                          <th>Nom du fichier</th>
+                          <th>Type du fichier</th>
+                          <th>Date de téléchargement</th>
+                          <th>Matricule du gestionnaire</th>
+                      </tr>
+                  </thead>
+                  <tbody class="">
+              <tr v-for="file in recentFiles" :key="file.documentID">
+                <td>{{ file.agentID }}</td>
+                <td>{{ file.designation }}</td>
+                <td>{{ file.type_name }}</td>
+                <td>{{ file.creation_date }}</td>
+                <td>{{ file.managerID }}</td>
+              </tr>
+            </tbody>
+              </table>
+          </div>
       </div>
-    </main>
   </div>
-</template>
+  </template>
+  
+  
+  <script>
 
-<script>
+import Chart from 'chart.js/auto';
+
 export default {
-  name: 'DossierView',
+  name: 'InterfaceDrh',
   data() {
     return {
-      employees: [],
-      search: '',
-      selectedFonction: '',
-      
-      clickedRows: {},
       menuItems: [],
-      totalAgentsByCategory: {},
-      currentCategory: null,
-      agentCategories: [],
-      agent: null,
       totalAgents: 0,
       totalDocuments: 0,
+      recentFiles: [],
+      agent: null,
+      agentCategories: [],
+      totalAgentsByCategory: {},
+      currentCategory: null,
+      lineChart: null, 
     };
   },
-  watch: {
-    // Surveillez les changements de la catégorie sélectionnée
-    '$route.params.name_category'(nameCategory) {
-      // Appelez la méthode pour changer la catégorie
-      this.changeCategory(nameCategory);
-    }
-  },
-
-  beforeRouteUpdate(to, from, next) {
-    // Récupérer le paramètre name_category de la nouvelle route
-    const nameCategory = to.params.name_category;
-
-    // Charger les données en fonction de la nouvelle route
-    this.fetchAgentCategory(nameCategory);
-
-    next();
-  },
-  computed: {
-    selectedCategory() {
-      return this.$route.params.name_category;
-    },
-    filteredEmployees() {
-      let filtered = this.employees.slice(0, this.visibleRows);
-      
-      // Filtrer par nom ou par Agent ID
-      if (this.search) {
-        filtered = filtered.filter(employee => {
-          const searchValue = this.search.toLowerCase();
-          return (
-            employee.nom.toLowerCase().includes(searchValue) ||
-            employee.agentID.toLowerCase().includes(searchValue)
-          );
-        });
-      }
-      
-      // Filtrer par département ou fonction
-      if (this.selectedFonction) {
-        filtered = filtered.filter(employee => employee.fonction === this.selectedFonction);
-      }
-      
-      return filtered;
-    },
-    fonctions() {
-      return [...new Set(this.employees.map(employee => employee.fonction))];
-    },
-  },
   methods: {
-    async changeCategory(category) {
-      // Charger les données des employés en fonction de la nouvelle catégorie
-      await this.fetchAgentCategory(category);
-      // Réinitialiser le filtre de recherche et la fonction sélectionnée
-      this.search = '';
-      this.selectedFonction = '';
-    },
-    /*
-    showMoreRows() {
-      // Basculez la valeur entre true et false à chaque clic
-      this.showAllRows = !this.showAllRows;
-      if (this.showAllRows) {
-        this.visibleRows = this.employees.length;
-      } else {
-        this.visibleRows = 10;
+    
+
+    async fetchRecentFiles() {
+      try {
+        const response = await fetch('http://localhost:3000/documents');
+        if (response.ok) {
+          const files = await response.json();
+          const sortedFiles = files.sort((a, b) => new Date(b.creation_date) - new Date(a.creation_date));
+          const recentFiles = sortedFiles.slice(0, 10).map(file => ({
+            designation: file.designation,
+            type_name: file.path.split('.').pop(),
+            path: file.path,
+            creation_date: file.creation_date,
+            managerID: file.managerID,
+            agentID : file.agentID,
+          }));
+          this.recentFiles = recentFiles;
+        } else {
+          console.error('Erreur lors de la récupération des fichiers récents :', response.statusText);
+        }
+      } catch (error) {
+        console.error('Une erreur s\'est produite lors de la récupération des fichiers récents :', error);
       }
-    }, */
-    getGradeName(gradeID) {
-      const employee = this.employees.find(employee => employee.gradeID === gradeID);
-      return employee && employee.Grade ? employee.Grade.grade_name : 'Unknown';
     },
+    goToDashboard() {
+      this.$router.push({ name: 'DashBoard' });
+    },
+        // Générer des couleurs aléatoires pour les segments du graphique
+    generateRandomColors(count) {
+      const colors = [];
+      for (let i = 0; i < count; i++) {
+        colors.push(this.getRandomColor());
+      }
+      return colors;
+    },
+    getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    },
+
     formatTitle(title) {
       // Formater la chaîne de caractères pour avoir la première lettre en majuscule
       const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1);
       return formattedTitle;
     },
-    goToDocumentView( employee) {
-      this.clickedRows[employee.agentID] = true;
-
-      this.$router.push({ 
-        name: 'DocumentView', 
-        params: { 
-          id: this.$route.params.id,
-          name_category: this.$route.params.name_category,
-          name: employee.nom 
-        } 
-      });
-    },
-    goBack() {
-    this.$router.push({ name: 'DashBoard' });
+    toggleScale(target) {
+      const element = document.querySelector(`.${target}`);
+      if (element) {
+        element.classList.toggle('scale');
+      }
     },
     handleLogout() {
       localStorage.removeItem('isAuthenticated');
@@ -180,21 +154,6 @@ export default {
     },
     handleClick(category) {
       this.currentCategory = category; // Enregistre la catégorie actuellement cliquée
-    },
-    async fetchAgentCategory(name_category) {
-      const url = 'http://localhost:3000/agents'; // URL pour récupérer tous les agents
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          const data = await response.json();
-          this.employees = data.filter(employee => employee.Grade.Category.name_category === name_category);
-          console.log(this.employees); // Vérifiez si les agents sont correctement filtrés
-        } else {
-          console.error('Erreur lors de la récupération des données:', response.statusText);
-        }
-      } catch (error) {
-        console.error('Une erreur s\'est produite lors de la récupération des données:', error);
-      }
     },
     async fetchAgentData(id) {
       const apiUrl = `http://localhost:3000/agents/${id}`;
@@ -265,51 +224,64 @@ export default {
         );
       } 
     }, 
-  },
-  mounted() {
-   
-    const name_category = this.$route.params.name_category;
-    this.fetchAgentCategory(name_category);
+    
+    // Méthode pour créer le graphique linéaire
+    createLineChart() {
+        console.log("affiche", this.menuItems);
+        const chartData = {
+            labels: this.nameCategories, // Utilisation des catégories comme étiquettes
+            datasets: [
+            {
+                label: 'Nombre d\'agents par catégorie',
+                data: Object.values(this.totalAgentsByCategory), // Utilisation des nombres des catégories
+                backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                borderColor: 'rgba(0, 123, 255, 1)',
+                borderWidth: 1
+            }
+            ]
+        };
 
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false
+        };
+
+        this.lineChart = new Chart(document.getElementById('lineChart'), {
+            type: 'line',
+            data: chartData,
+            options: chartOptions
+        });
+        }
   },
   created() {
     const id = this.$route.params.id;
     this.fetchAgentData(id);
+    this.fetchRecentFiles();
     this.fetchManagerData(id);
+  },
+  mounted() {
+    // Créer le graphique linéaire lors du montage du composant
+    this.createLineChart();
   }
-/*
-  async mounted() {
-  const nameCategory = this.$route.params.name_category;
-  console.log(nameCategory); // Affiche le paramètre name_category dans la console
-
-  const url = 'http://localhost:3000/agents'; // URL pour récupérer tous les agents
-  try {
-    const response = await fetch(url);
-    if (response.ok) {
-      const data = await response.json();
-      this.employees = data.filter(employee => employee.Grade.Category.name_category === nameCategory);
-      console.log(this.employees); // Vérifiez si les agents sont correctement filtrés
-    } else {
-      console.error('Erreur lors de la récupération des données:', response.statusText);
-    }
-  } catch (error) {
-    console.error('Une erreur s\'est produite lors de la récupération des données:', error);
-  }
-}, */
 };
 </script>
-
+  
+  
   
 <style scoped>
-.dossier-view-container {
-  display: flex;
-  flex-direction: column;
-  position: relative; /* Permet d'utiliser position: fixed sur les enfants */
+/* Styles pour la dashboard-sidebar */
+.dashboard-drh {
+    position: relative; /* Permet d'utiliser position: fixed sur les enfants */
   font-family: 'Dosis', sans-serif;
   /*font-family: 'Poppins', sans-serif; */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
+
 .dashboard-sidebar {
   position: fixed;
+  flex: 0 0 250px;
   top: 60px;
   left: 0;
   bottom: 0;
@@ -466,6 +438,7 @@ export default {
 .dashboard-sidebar.sidebar-mini .user-info .username {
   display: none;
 }
+
 .dashboard-title {
   font-weight: bold;
   font-size: 18px;
@@ -481,20 +454,17 @@ export default {
 .dashboard-title:hover {
   background-color: rgba(255, 255, 255, 0.1); /* Ajoutez un fond de couleur au survol */
 }
-.sidebar-arrow {
-  width: 10px;
-  height: 10px;
-  margin-left: auto;
-  fill: currentColor;
-}
+
 .sidebar-menu {
   list-style: none;
   padding: 0;
   margin: 0;
 }
+
 .sidebar-item {
   margin-bottom: 10px;
 }
+
 .sidebar-link {
   display: flex;
   align-items: center;
@@ -506,9 +476,19 @@ export default {
 .sidebar-link:hover {
   background-color: #417688;
 }
+
+.sidebar-arrow {
+  width: 10px;
+  height: 10px;
+  margin-left: auto;
+  fill: currentColor;
+}
+.table-responsive{
+  flex : 70%
+}
 .category-agents {
   font-size: 14px;
-  color: #da4848;
+  color: white;
   
 }
 .category-name {
@@ -540,55 +520,153 @@ export default {
   padding: 0;
   margin: 0;
 }
-
-.dashboard-header {
-  background-color: #333;
-  color: white;
-  padding: 10px;
+.dashboard-sidebar .category-list li {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  width: 100%;
 }
-.fixed-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  /* Ajoutez les autres styles nécessaires pour le header */
+.category-item {
+  margin-bottom: 10px;
 }
+
+.category-link {
+  display: block;
+  padding: 10px;
+  color: #333;
+  text-decoration: none;
+  transition: background-color 0.3s;
+}
+
+.category-link:hover {
+  background-color: #eaeaea;
+}
+.category-agents {
+  font-size: 14px;
+  color: #da4848;
+}
+
 /* Styles pour la main-content */
 .main-content {
   margin-left: 300px; /* Laisse de l'espace pour la sidebar */
   padding: 20px;
   display: flex;
   flex-direction: column;
+}
+.recent-files-container {
+  flex: 1; /* Remplissez tout l'espace disponible */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+ }
+
+.stats-section {
+  display: flex;
+  flex-wrap: wrap; /* Permet aux éléments de se répartir sur plusieurs lignes */
+  gap: 20px;
+  margin-top: 20px;
+}
+.combined-stats {
+  display: flex;
+  flex: 1;
+}
+.table-bordered {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+  background-color: #fff;
+  border-radius: 10px;
+}
+
+.table-bordered thead th {
+  font-weight: bold;
+  color: #000;
+  border-bottom: 2px solid #dee2e6;
+  background-color: #f5f5f5;
+}
+
+.table-bordered tbody td,
+.table-bordered thead th {
+  padding: 12px 15px;
+  border: 1px solid #dee2e6;
+}
+
+.table-bordered tbody td {
+  font-size: 14px;
+  color: #333;
+}
+
+.table-bordered tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.table-bordered tbody tr:hover {
+  background-color: #ddd;
+}
+
+.dashboard-header {
+   /* Laisse de l'espace pour la sidebar */
+   background-color: #333;
+  color: white;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  /*
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  grid-area: header;
+  z-index: 1000;  Assure que le header reste au-dessus du contenu */
+
+ 
+}
+.dashboard-header.fixed-header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.dashboard-content {
+  display: flex;
   flex-grow: 1;
 }
 .logo-wrapper {
   display: flex;
   align-items: center;
 }
-.d-flex  {
-  display: flex;
-  align-items: center;
-  margin-right: auto;
-}
+
 .logo-wrapper img {
   width: 40px;
   height: 40px;
   margin-right: 10px;
 }
-
-.row-clicked {
-  background-color: #3c77af; /* Couleur de fond de la ligne cliquée */
-  transition: background-color 0.3s; /* Transition pour rendre l'effet plus fluide */
-}
 .company-name {
   font-size: 24px;
   font-weight: bold;
+  
 }
 .logout-button-wrapper {
   align-self: center;
+}
+
+.agent-name {
+  font-weight: bold;
+  font-size: 24px;
+  
+}
+
+.user-info img {
+  width: 32px;
+  height: 32px;
+}
+
+.menu-items {
+  display: flex;
+  gap: 10px;
+  text-decoration: none;
 }
 
 .logout-button {
@@ -600,92 +678,87 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s;
+  
 }
 
 .logout-button:hover {
   background-color: #cc0000;
 }
-.dossier-title {
-  font-size: 24px;
-  margin-bottom: 20px;
+
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
 }
 
-.filters-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
+.total-agent,
+.total-document {
+  flex: 30%;
+  padding: 20px;
+  
+  color: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background-image: linear-gradient(to right, #40d7eb, #35518f);
+  
+}
+.recent-files-container {
+  flex: 70%;
+  padding: 20px;
+  
+  color: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background-image: linear-gradient(to right, #35518f, #40d7eb);
 }
 
-.form-control {
-  padding: 8px;
-  margin: 5px;
+.total-agent:hover,
+.recent-files-container:hover {
+  transform: scale(1.05);
+}
+
+.total-label {
+  font-weight: bold;
   font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  width: 440px;
 }
 
-.table-container {
-  width: 100%;
+.total-agent:hover,
+.total-document:hover {
+  transform: scale(1.05);
+}
+
+
+.total-label {
+  font-weight: bold;
+  font-size: 16px; /* Réduire la taille de la police */
+}
+
+.total-value {
+  font-size: 20px; /* Réduire la taille de la police */
+  margin-top: 6px; /* Ajuster la marge supérieure */
+}
+
+
+.recent-title {
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 10px;
   
 }
 
-.table {
-  width: 100%;
-  /*border-collapse: separate; */
-  border-spacing: 0;
-  border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  margin-top: 20px;
-  border-collapse: collapse;
+.recent-list {
+  list-style: none;
+  padding: 0;
+  
 }
 
-th {
-  background-color: #f3f3f3;
-
+.recent-list li {
+  margin-bottom: 10px;
 }
 
-td, th { 
-  padding: 12px 15px;
-  border-bottom: 1px solid #e0e0e0; 
-} 
-
-tr:nth-child(even) {
-  background-color: #f9f9f9;
-}
-tr:hover {
-  background-color: #f5f5f5;
-}
-/* Supprimez la bordure en bas de la dernière ligne pour éviter le double trait */
-tr:last-child td, tr:last-child th {
-  border-bottom: none;
-}
-
-td {
-  color: #333;
-}
-
-th, td { /*
-  text-align: center; */
-  padding: 8px;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
-
-
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-primary:hover {
-  background-color: #0069d9;
-}
 </style>

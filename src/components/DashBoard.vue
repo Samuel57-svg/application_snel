@@ -1,17 +1,20 @@
 <template>
-  <div class="dashboard">
+  <div class="dashboard-container">
     <header class="dashboard-header">
       <div class="logo-wrapper">
         <img src="/snel.png" alt="Logo IFolder">
         <span class="company-name">IFolder</span>
       </div>
+      
       <div class="logout-button-wrapper">
         <button class="logout-button" @click="handleLogout">Se déconnecter</button>
       </div>
     </header>
-
+    <div class="dashboard-content">
     <nav class="dashboard-sidebar">
       <div class="sidebar-wrapper">
+        <!-- Titre Dashboard cliquable -->
+        <button class="dashboard-title" @click="goToDashboard">Dashboard</button>
         <ul class="sidebar-menu">
           <li class="sidebar-item" v-for="item in menuItems" :key="item.title">
             <router-link :to="`/agents/${this.$route.params.id}/${item.title}`" class="sidebar-link" @click="handleClick(item.title)">
@@ -28,8 +31,6 @@
 
 
     <main class="main-content">
-
-      
       <div class="top-bar">
         <div class="user-info">
           <div v-if="agent">
@@ -38,38 +39,52 @@
             <div>{{ agent.fonction }}</div>
           </div>
         </div>
-        <nav>      
-          <ul class="menu-items">
-
-          </ul>
-        </nav>
-
       </div>
+      
       <div class="stats-section">
-        <div class="total-agent" @mouseover="toggleScale('total-agent')" @mouseleave="toggleScale('total-agent')">
-          <div class="total-label">Total Agents</div>
-          <div class="total-value">{{ totalAgents }}</div>
+        <div class="combined-stats">
+          <div class="total-agent" @mouseover="toggleScale('total-agent')" @mouseleave="toggleScale('total-agent')">
+            <div class="total-label">Total Agents</div>
+            <div class="total-value">{{ totalAgents }}</div>
+          </div>
+        
+          <div class="recent-files-container" @mouseover="toggleScale('recent-files')" @mouseleave="toggleScale('recent-files')">
+            <div class="total-label">Ajouts récents de fichiers</div>
+            <div class="total-value">{{ recentFiles.length }}</div>
+          </div>
         </div>
-        <div class="total-document" @mouseover="toggleScale('total-document')" @mouseleave="toggleScale('total-document')">
-          <div class="total-label">Total Documents</div>
-          <div class="total-value">{{ totalDocuments }}</div>
+      </div>
+
+      <div class="combined-stats">
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
         </div>
-      </div>
-      <div class="recent-files">
-        <h3 class="recent-title">Ajouts récents de fichiers</h3>
-        <ul class="recent-list">
-          <li v-for="file in recentFiles" :key="file.id">
-            <router-link :to="file.path">{{ file.name }}</router-link>
-          </li>
-          <li v-if="!recentFiles.length">Aucun fichier récent</li>
-        </ul>
-      </div>
-      <!-- Contenu du tableau de bord -->
-      <router-view></router-view>
-      <div class="chart-container">
-        <canvas id="chart"></canvas>
-      </div>
-    </main>
+      
+        <div class="table-responsive">
+          <table class="table tablesorter">
+            <thead class="text-primary">
+              <tr>
+                <th>Désignation</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Matricule</th>
+                <th>Gestionnaire</th>
+              </tr>
+            </thead>
+            <tbody class="">
+              <tr v-for="file in recentFiles" :key="file.documentID">
+                <td>{{ file.designation }}</td>
+                <td>{{ file.type_name }}</td>
+                <td>{{ file.creation_date }}</td>
+                <td>{{ file.agentID }}</td>
+                <td>{{ file.managerID }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>          
+    </main> 
+  </div> 
   </div>
 </template>
 
@@ -94,6 +109,48 @@ export default {
     };
   },
   methods: {
+
+    async fetchRecentFiles() {
+      try {
+        const response = await fetch('http://localhost:3000/documents');
+        if (response.ok) {
+          const files = await response.json();
+          const sortedFiles = files.sort((a, b) => new Date(b.creation_date) - new Date(a.creation_date));
+          const recentFiles = sortedFiles.slice(0, 10).map(file => ({
+            designation: file.designation,
+            type_name: file.path.split('.').pop(),
+            path: file.path,
+            creation_date: file.creation_date,
+            managerID: file.managerID,
+            agentID : file.agentID,
+          }));
+          this.recentFiles = recentFiles;
+        } else {
+          console.error('Erreur lors de la récupération des fichiers récents :', response.statusText);
+        }
+      } catch (error) {
+        console.error('Une erreur s\'est produite lors de la récupération des fichiers récents :', error);
+      }
+    },
+    goToDashboard() {
+      this.$router.push({ name: 'DashBoard' });
+    },
+        // Générer des couleurs aléatoires pour les segments du graphique
+    generateRandomColors(count) {
+      const colors = [];
+      for (let i = 0; i < count; i++) {
+        colors.push(this.getRandomColor());
+      }
+      return colors;
+    },
+    getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    },
     generateChartData() {
       const categories = Object.keys(this.totalAgentsByCategory);
       const data = categories.map(category => this.totalAgentsByCategory[category]);
@@ -126,7 +183,7 @@ export default {
       this.currentCategory = category; // Enregistre la catégorie actuellement cliquée
     },
     async fetchAgentData(id) {
-      const apiUrl = `http://10.1.44.176:3000/agents/${id}`;
+      const apiUrl = `http://localhost:3000/agents/${id}`;
       try {
         const response = await fetch(apiUrl);
         if (response.ok) {
@@ -141,7 +198,7 @@ export default {
       }
     },
     async fetchManagerData(id) {
-      const apiUrl = `http://10.1.44.176:3000/gerer/manager/${id}`;
+      const apiUrl = `http://localhost:3000/gerer/manager/${id}`;
       try {
         const response = await fetch(apiUrl);
         if (response.ok) {
@@ -152,6 +209,7 @@ export default {
           const nameCategories = managerData.map(manager => manager.Category.name_category);
           console.log("cest :", nameCategories)
           this.agentCategories = nameCategories;
+
           
           // Créer les menuItems en utilisant les name_category
           this.menuItems = nameCategories.map(category => ({
@@ -161,7 +219,7 @@ export default {
           // Initialiser la variable temporaire
           let totalAgents = 0;
           for (const category of nameCategories) {
-            const apiUrl = `http://10.1.44.176:3000/agents?category=${category}`;
+            const apiUrl = `http://localhost:3000/agents?category=${category}`;
             try {
               const response = await fetch(apiUrl);
               if (response.ok) {
@@ -193,53 +251,232 @@ export default {
         );
       } 
     }, 
-
   },
   created() {
     const id = this.$route.params.id;
     this.fetchAgentData(id);
+    this.fetchRecentFiles();
     this.fetchManagerData(id);
     this.$nextTick(() => {
       this.generateChartData();
       });
   },
   mounted() {
-    this.$nextTick(() => {
-    if (this.chartData) {
-      const ctx = document.getElementById('chart').getContext('2d');
-      new Chart(ctx, {
-        type: 'pie',
-        data: this.chartData,
-        options: {}, // Ajoutez ici les options spécifiques au graphique si nécessaire
-      });
-    }
-  });
-},
+  
+    // Attendre que toutes les données soient récupérées
+    Promise.all([this.fetchAgentData(this.$route.params.id), this.fetchManagerData(this.$route.params.id)])
+      .then(() => {
+        if (this.agentCategories.length > 0) {
+          const ctx = document.getElementById('chart').getContext('2d');
+          new Chart(ctx, {
+            type: 'pie',
+            data: {
+              labels: this.agentCategories,
+              datasets: [{
+                data: this.agentCategories.map(category => this.totalAgentsByCategory[category]),
+                backgroundColor: this.generateRandomColors(this.agentCategories.length),
+              }]
+            },
+            options: {
+              // Spécifiez un rayon plus petit pour le camembert
+            // Vous pouvez ajuster ce pourcentage selon vos besoins
+            }
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Une erreur s\'est produite lors de la récupération des données:', error);
+    });
+  },
 };
 </script>
 
 
-<style >
+<style>
 /* Styles pour la dashboard-sidebar */
-.dashboard {
+.dashboard-container {
   position: relative; /* Permet d'utiliser position: fixed sur les enfants */
+  font-family: 'Dosis', sans-serif;
+  /*font-family: 'Poppins', sans-serif; */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
 .dashboard-sidebar {
-  margin-top: 60px;
   position: fixed;
-  top: 0;
+  flex: 0 0 250px;
+  top: 60px;
   left: 0;
   bottom: 0;
-  width: 280px;
-  background-color: #375561;
-  color: white;
-  padding: 10px;
+  z-index: 1;
+  display: block;
+  background-color: #333;
+  color: #fff;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 30px;
+  transition: all 0.3s cubic-bezier(0.685, 0.0473, 0.346, 1);
+  width: 260px;
+  box-shadow: 4px 0 20px -5px rgba(0, 0, 0, 0.6);
+}
+.dashboard-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+.dashboard-sidebar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
-.sidebar-wrapper {
+.dashboard-sidebar .nav .nav-item {
+  margin-bottom: 4px;
+}
+
+.dashboard-sidebar .nav .nav-item .nav-link {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px 15px;
+  color: #fff;
+  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.685, 0.0473, 0.346, 1);
+}
+
+.dashboard-sidebar .nav .nav-item .nav-link .badge {
+  position: absolute;
+  right: 10px;
+  padding: 2px 5px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+}
+
+.dashboard-sidebar .nav .nav-item .nav-link.active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-sidebar .nav .nav-item .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dashboard-sidebar .logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 15px;
+  font-size: 20px;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-sidebar .logo img {
+  width: 40px;
+  height: 40px;
+  margin-right: 10px;
+}
+
+.dashboard-sidebar .nav-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  padding: 0 15px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dashboard-sidebar .nav-title span {
+  display: block;
+  
+}
+
+.dashboard-sidebar .divider {
+  margin: 0 15px;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-sidebar .user-info {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 15px;
+  border-radius: 0 25px 25px 0;
+  background-color: rgba(0, 0, 0, 0.2);
+  
+}
+
+.dashboard-sidebar .user-info img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.dashboard-sidebar .user-info .username {
+  margin-top: 10px;
+  font-size: 1rem;
+}
+
+.dashboard-sidebar .sidebar-background {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center center;
+}
+
+.dashboard-sidebar.sidebar-mini .sidebar-wrapper {
+  padding-left: 0;
+}
+
+.dashboard-sidebar.sidebar-mini .logo {
+  padding: 10px;
+}
+
+.dashboard-sidebar.sidebar-mini .nav-item .nav-link {
+  padding-left: 15px !important;
+  padding-right: 15px !important;
+}
+
+.dashboard-sidebar.sidebar-mini .nav-title {
+  display: none;
+}
+
+.dashboard-sidebar.sidebar-mini .divider {
+  display: none;
+}
+
+.dashboard-sidebar.sidebar-mini .user-info {
+  padding: 20px;
+}
+
+.dashboard-sidebar.sidebar-mini .user-info img {
+  width: 30px;
+  height: 30px;
+}
+
+.dashboard-sidebar.sidebar-mini .user-info .username {
+  display: none;
+}
+
+.dashboard-title {
+  font-weight: bold;
+  font-size: 18px;
   margin-bottom: 20px;
+  color: white;
+  background-color: transparent;
+  border: none;
+  cursor: pointer; /* Ajoutez un style de curseur pointer */
+  padding: 10px; /* Ajoutez un padding pour améliorer l'interaction */
+  display: inline-block; /* Assurez-vous que le lien agit comme un bouton */
+}
+
+.dashboard-title:hover {
+  background-color: rgba(255, 255, 255, 0.1); /* Ajoutez un fond de couleur au survol */
 }
 
 .sidebar-menu {
@@ -270,12 +507,18 @@ export default {
   margin-left: auto;
   fill: currentColor;
 }
-
+.table-responsive{
+  flex : 70%
+}
 .category-agents {
   font-size: 14px;
   color: white;
+  
 }
-
+.category-name {
+  
+  font-weight: bold;
+}
 .category-title {
   font-size: 24px;
   font-weight: bold;
@@ -329,16 +572,84 @@ export default {
 .main-content {
   margin-left: 300px; /* Laisse de l'espace pour la sidebar */
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 }
+.recent-files-container {
+  flex: 1; /* Remplissez tout l'espace disponible */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+ }
+
+.stats-section {
+  display: flex;
+  flex-wrap: wrap; /* Permet aux éléments de se répartir sur plusieurs lignes */
+  gap: 20px;
+  margin-top: 20px;
+}
+.combined-stats {
+  display: flex;
+  flex: 1;
+}
+.table-bordered {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+  background-color: #fff;
+  border-radius: 10px;
+}
+
+.table-bordered thead th {
+  font-weight: bold;
+  color: #000;
+  border-bottom: 2px solid #dee2e6;
+  background-color: #f5f5f5;
+}
+
+.table-bordered tbody td,
+.table-bordered thead th {
+  padding: 12px 15px;
+  border: 1px solid #dee2e6;
+}
+
+.table-bordered tbody td {
+  font-size: 14px;
+  color: #333;
+}
+
+.table-bordered tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.table-bordered tbody tr:hover {
+  background-color: #ddd;
+}
+
 .dashboard-header {
    /* Laisse de l'espace pour la sidebar */
-  background-color: #333;
+   background-color: #333;
   color: white;
   padding: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
+  /*
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   grid-area: header;
+  z-index: 1000;  Assure que le header reste au-dessus du contenu */
+
+ 
+}
+.dashboard-content {
+  display: flex;
+  flex-grow: 1;
 }
 .logo-wrapper {
   display: flex;
@@ -353,6 +664,7 @@ export default {
 .company-name {
   font-size: 24px;
   font-weight: bold;
+  
 }
 .logout-button-wrapper {
   align-self: center;
@@ -361,6 +673,7 @@ export default {
 .agent-name {
   font-weight: bold;
   font-size: 24px;
+  
 }
 
 .user-info img {
@@ -383,6 +696,7 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s;
+  
 }
 
 .logout-button:hover {
@@ -398,17 +712,37 @@ export default {
 
 .total-agent,
 .total-document {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background-color: #58b4df;
-  color: white;
+  flex: 30%;
   padding: 20px;
-  border-radius: 10px;
+  
+  color: #ffffff;
+  border-radius: 8px;
   cursor: pointer;
   transition: transform 0.3s;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background-image: linear-gradient(to right, #40d7eb, #35518f);
+  
+}
+.recent-files-container {
+  flex: 70%;
+  padding: 20px;
+  
+  color: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background-image: linear-gradient(to right, #35518f, #40d7eb);
+}
+
+.total-agent:hover,
+.recent-files-container:hover {
+  transform: scale(1.05);
+}
+
+.total-label {
+  font-weight: bold;
+  font-size: 16px;
 }
 
 .total-agent:hover,
@@ -419,23 +753,46 @@ export default {
 
 .total-label {
   font-weight: bold;
-  font-size: 18px;
+  font-size: 16px; /* Réduire la taille de la police */
 }
 
 .total-value {
-  font-size: 24px;
-  margin-top: 10px;
+  font-size: 20px; /* Réduire la taille de la police */
+  margin-top: 6px; /* Ajuster la marge supérieure */
 }
+
+.chart-container {
+  max-width: 300px; /* Définissez la largeur maximale du conteneur */
+  max-height: 300px; /* Définissez la hauteur maximale du conteneur */
+  align-items: center;
+  border-radius: 8px; /* Ajoutez un border-radius */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  
+  flex: 30%;
+}
+
+#chart {
+  max-width: 100%; /* Assurez-vous que le camembert s'adapte à la taille du conteneur */
+  width: 80px; /* Définissez la largeur souhaitée */
+  height: 80px; /* Définissez la hauteur souhaitée */
+  border-radius: 8px; /* Ajoutez un border-radius */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  
+}
+
+
 
 .recent-title {
   font-weight: bold;
   font-size: 20px;
   margin-bottom: 10px;
+  
 }
 
 .recent-list {
   list-style: none;
   padding: 0;
+  
 }
 
 .recent-list li {

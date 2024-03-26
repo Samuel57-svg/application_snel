@@ -1,39 +1,20 @@
 <template>
   <div class="document-view-container">
-    <header class="dashboard-header full-width-header fixed-header">
+    <header class="dashboard-header  fixed-header full-width-header">
       <div class="logo-wrapper">
         <img src="/snel.png" alt="Logo IFolder">
         <span class="company-name">IFolder</span>
       </div>
       <div class="logout-button-wrapper">
-        <button class="logout-button back-button" @click="handleLogout">Se déconnecter</button>
+        <button class="logout-button" @click="handleLogout">Se déconnecter</button>
       </div>
     </header>
-
-    <div class="header-actions justify-start">
-        <button class="btn btn-primary" @click="goBack">Retour</button>
-    </div>
-    <div class="header-padding"></div>
     <div class="cv-info header-margin">
-      <div class="row align-items-center">
-        <div class="col-auto">
-          <button class="btn btn-lg btn-primary rounded-circle back-button" @click="goBack">
-            <!-- Insérez ici l'icône ou le texte de votre choix pour le bouton -->
-            <i class="fas fa-chevron-left"></i>
-            <!-- Ou simplement du texte :
-            <span>Retour</span>
-            -->
-          </button>
-        </div>
-        <div class="col">
-          <div class="details">
-            <p><strong>Noms :</strong> {{ employee.nom }} {{ employee.last_name }}</p>
-            <p><strong>Grade :</strong> {{  employee.Grade ? employee.Grade.grade_name : "Unknown" }}</p>
-            <p><strong>Fonction :</strong> {{ employee.fonction }}</p>
-          </div>
-        </div>
+      <div class="details">
+        <p><strong>Noms :</strong> {{ agent.nom }} {{ agent.last_name }}</p>
+        <p><strong>Grade :</strong> {{  agent.Grade ? agent.Grade.grade_name : "Unknown" }}</p>
+        <p><strong>Fonction :</strong> {{ agent.fonction }}</p>
       </div>
- 
     </div>
 
     <div class="file-upload-search">
@@ -41,7 +22,8 @@
         <input type="text" v-model="searchDocument" placeholder="Rechercher un document" class="form-control" @input="searchDocuments" />
       </div>
       <div class="actions">
-        <button type="button" id="addButton" class="btn btn-primary"  data-bs-whatever="ajouter" @click="openForm" >ajouter</button>
+        
+        <div class="document-count bg-primary text-white p-2 rounded" v-if="agent.documents" label="Nombre total document"> Nombre total document: {{  agent.documents.length }}</div>
       </div>
     </div>
     
@@ -51,15 +33,14 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="addFormModalLabel">Ajouter des fichiers</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            
+            <button type="button" id="closeButton" class="btn-close" aria-label="Close" @click="closeForm"></button>
           </div>
           <form @submit.prevent="addFile" enctype="multipart/form-data">
             <div class="modal-body">
               <div class="form-group">
                 <label for="file-name">Nom du fichier</label>
                 <select id="file-name" v-model="selectedDocumentType" class="form-control">
-                  
+                  <option value="">Sélectionner un type de document</option>
                   <option v-for="type in documentTypes" :key="type.type_documentID" :value="type">{{ type.type_name }}</option>
                 </select>
               </div>
@@ -69,7 +50,7 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" id="cancelButton" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Close" >Annuler</button>
+              <button type="button" id="cancelButton" class="btn btn-secondary" @click="closeForm">Annuler</button>
               <button type="submit" class="btn btn-primary">Valider</button>
             </div>
           </form>
@@ -106,11 +87,11 @@
               <th scope="col">Type</th>
               <th scope="col">Date</th>
               <th scope="col">Gestionnaire</th>
-              <th scope="col">Impression</th> 
+              <th scope="col">Impression</th>
             </tr>
           </thead>
           <tbody v-if="hasDocuments">
-            <tr v-for="document in employee.documents" :key="document.nom">
+            <tr v-for="document in agent.documents" :key="document.agentID">
               <td>{{ document.designation }}</td>
               <td>{{ (document.path.split('.').pop())}}</td>
               <td>{{ document.creation_date }}</td>
@@ -136,18 +117,14 @@ import Swal from "sweetalert2";
 
 
 export default {
-  name: 'DocumentView',
+  name: 'DocumentViewAgent',
   data() {
     return {
-      employee: {
+      agent: {
         documents: []
       },
       newDocumentName: '',
       showAddFormDialog: false,
-      shareOptions: {
-        email: false,
-        social: false,
-      },
       searchDocument: '',
       selectedDocuments: [],
       documentTypes: [],
@@ -163,93 +140,84 @@ export default {
       
     };
   },
-  created() {
-    const name = this.$route.params.name;
-    fetch('http://localhost:3000/agents')
+  mounted() {
+    const id = this.$route.params.id;
+
+fetch(`http://10.1.44.36:3001/agents`)  
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("Erreur lors de la récupération des agents");
+    }
+    return response.json();
+  })
+  .then(data => {
+    this.agent = data.find(agent => agent.agentID === id);
+    if (!this.agent) {
+      console.log("L'agent n'a pas été trouvé");
+    }
+  })
+  .catch(error => {
+    console.error(
+      "Une erreur s'est produite lors de la récupération des agents:",
+      error
+    );
+  });
+
+ 
+  fetch(`http://10.1.44.36:3001/documents`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des documents');
+      }
+      return response.json();
+      
+    })
+    .then(data => {
+      console.log("affiche t",data);
+      this.agent.documents = data.filter(document => document.agentID === id);
+      console.log("affiche B",this.agent.documents);
+    })
+    .catch(error => {
+      console.error('Une erreur s\'est produite lors de la récupération des documents:', error);
+    });
+
+    fetch(`http://10.1.44.36:3001/type_documents`)
       .then(response => {
         if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des données');
+          throw new Error('Erreur lors de la récupération des types de documents');
         }
         return response.json();
       })
       .then(data => {
-        this.employee = data.find(emp => emp.nom === name);
-        if (!this.employee) {
-          console.log("L'employé n'a pas été trouvé");
-        }
-        // Récupérer les types de documents
-        fetch('http://localhost:3000/type_documents/')
-        .then(response => {
-            if (!response.ok) {
-              throw new Error('Erreur lors de la récupération des types de documents');
-            }
-            return response.json();
-          })
-          .then(data => {
-            
-            this.documentTypes = [{ type_documentID: "", type_name: "Sélectionner un type de document" }, ...data];
-            // Définir le premier élément de la liste déroulante par défaut
-            this.selectedDocumentType = this.documentTypes[0];
-          })
-          .catch(error => {
-            console.error("Une erreur s'est produite lors de la récupération des types de documents :", error);
-          });
-        // Interroger l'API des documents pour cet employé
-        fetch(`http://localhost:3000/documents`)
-          .then(response => {
-            console.log('donne aget id', response)
-              if (!response.ok) {
-                  throw new Error('Erreur lors de la récupération des documents de l\'employé');
-              }
-              return response.json();
-          })
-          .then(data => {
-              // Récupérer l'agentID de l'employé actuel
-              const currentAgentID = this.employee.agentID;
-
-            // Filtrer les documents en fonction de l'agentID actuel
-            const filteredDocuments = data.filter(doc => doc.agentID === currentAgentID);
-
-            // Affecter les documents filtrés à l'employé
-            this.employee.documents = filteredDocuments;
-
-            console.log(this.employee.documents);
-          })
-          /*
-          .then(() => {
-            // Rafraîchir la liste des documents
-            this.refreshDocumentList();
-          }) */
-          .catch(error => {
-              console.error("Une erreur s'est produite lors de la récupération des documents de l'employé :", error);
-          });
-
+        this.documentTypes = data;
       })
       .catch(error => {
-        console.error('Une erreur s\'est produite lors de la récupération des données:', error);
+        console.error("Une erreur s'est produite lors de la récupération des types de documents :", error);
       });
   },
   computed: {
     hasDocuments() {
-      return this.employee.documents && this.employee.documents.length > 0;
-    },
-
+      //return this.agent.documents.length > 0;
+      return this.agent.documents && this.agent.documents.length > 0;
+    },/*
+    filteredDocuments() {
+      const agentID = this.$route.params.id;
+      //return this.documents.filter(document => document.agentID === Number(agentID));
+      return this.agent.documents.filter(document => document.agentID === agentID);
+    }*/
   },
   methods: { 
     removeTempFile(index) {
     this.tempFiles.splice(index, 1); // Retirer la ligne du tableau tempFiles
   },
     showSuccessMessage() {
-      Swal.fire("Succès !", "L'enregistrement a réussi avec succès.", "success").then(() => {
-      this.showModal = false; // Fermer le modal après l'affichage du message de succès;
-      });
+      Swal.fire("Succès !", "L'enregistrement a réussi avec succès.", "success");
     },
     openForm() {
-      /* eslint-disable */ 
-      $('#addFormModal').modal('show');
+      this.showModal = true;
+      document.body.classList.add('modal-open'); // Ajouter la classe modal-open
     },
     closeForm() {
-      
       if (this.modal) {
         this.modal.hide(); // Cacher le formulaire modal
       }
@@ -263,6 +231,16 @@ export default {
       this.showModal = false; // Cacher le modal
       document.body.classList.remove('modal-open'); // Supprimer la classe modal-open du body
     },
+        getFilePath(filename) {
+            // Vérifie si le chemin commence déjà par "uploads/"
+        if (filename.startsWith('uploads/')) {
+          // Si oui, retournez le chemin sans "uploads/" et spécifiez le port 3000
+          return `http://10.1.44.36:3001/${filename.replace('uploads/', '')}`;
+        } else {
+          // Sinon, retournez le chemin tel quel et spécifiez le port 3000
+          return `http://10.1.44.36:3001/${filename}`;
+        }
+    },
 
     // Validation du formulaire
     validateForm() {
@@ -275,15 +253,15 @@ export default {
       return true;
     },
    getGradeName(gradeID) {
-      const employee = this.employees.find(employee => employee.gradeID === gradeID);
-      return employee && employee.Grade ? employee.Grade.grade_name : 'Unknown';
+      const agent = this.agent.Grade.find(agent => agent.gradeID === gradeID);
+      return agent && agent.Grade ? agent.Grade.grade_name : 'Unknown';
     },
     filteredDocuments() {
       if (!this.searchDocument) {
-        return this.employee.documents;
+        return this.agent.documents;
       }
       const searchTerm = this.searchDocument.toLowerCase();
-      return this.employee.documents.filter(document => {
+      return this.agent.documents.filter(document => {
         return document.designation.toLowerCase().includes(searchTerm);
       });
     },
@@ -292,7 +270,7 @@ export default {
         this.refreshDocumentList();
       } else {
         // Rafraîchissez les documents filtrés à chaque saisie
-        this.employee.documents = this.filteredDocuments();
+        this.agent.documents = this.filteredDocuments();
         //this.searchInPDF();
       }
     },
@@ -302,8 +280,9 @@ export default {
     refreshDocumentList() {
     // Interroger le serveur pour récupérer la liste des documents pour l'employé actuel
     // Supposons que vous ayez une API qui renvoie les documents d'un employé en fonction de son ID
-    fetch(`http://localhost:3000/documents`)
+    fetch(`http://10.1.44.36:3001/documents`)
           .then(response => {
+            console.log('donne aget id', response)
               if (!response.ok) {
                   throw new Error('Erreur lors de la récupération des documents de l\'employé');
               }
@@ -311,42 +290,23 @@ export default {
           })
           .then(data => {
               // Récupérer l'agentID de l'employé actuel
-              const currentAgentID = this.employee.agentID;
+              const currentAgentID = this.$route.params.id;
 
             // Filtrer les documents en fonction de l'agentID actuel
             const filteredDocuments = data.filter(doc => doc.agentID === currentAgentID);
 
             // Affecter les documents filtrés à l'employé
-            this.employee.documents = filteredDocuments;
+            this.agent.documents = filteredDocuments;
          });
     },
-    
-    shareDocuments() {
-      // Votre logique de partage ici
-      // Afficher la boîte de dialogue de partage
-      this.showShareDialog = true;
-    },
-    cancelShare() {
-      // Annuler le partage
-      this.showShareDialog = false;
-      this.shareOptions.email = false;
-      this.shareOptions.social = false;
-    },
-    goBack() {
-    this.$router.push({ name: 'DossierView' });
-    },
+
+
+   
     handleLogout() {
       localStorage.removeItem('isAuthenticated');
       this.$router.push({ name: 'HelloWorld' });
     },
-    /*
-    closeForm() {
-      this.file = null;
-      this.newDocumentName = '';
-      this.selectedDocumentType =null, // Réinitialiser à la valeur par défaut
-      this.showModal = false;
-      this.showAddFormDialog = false;
-    }, */
+
     handleFileUpload(event) {
       const fileInput = event.target;
       if (fileInput.files.length > 0) {
@@ -364,97 +324,7 @@ export default {
       //console.log("tempFiles", this.tempFiles);  Vérifiez les fichiers ajoutés à tempFiles
     },
 
-    showAddForm() {
-      this.showAddFormDialog = true;
-    },
-    getDate() {
-      var date = new Date();
-      const day = String(date.getDate()).padStart(2,'0');
-      const month = String(date.getMonth() + 1).padStart(2,'0');
-      const year = date.getFullYear();
-      return `${year}-${month}-${day}`;
-    },
-    
-    addFile() {
-      if (!this.selectedDocumentType || !this.tempFiles.length) {
-        this.errorMessage = "Veuillez remplir tous les champs obligatoires.";
-        return;
-      }
-      
-      const uploadFile = (tempFile) => {
-        const formData = new FormData();
-        formData.append("agentID", this.employee.agentID);
-        formData.append("managerID", this.$route.params.id);
-        formData.append("type_documentID", tempFile.type_documentID);
-        formData.append("designation", tempFile.type_name);
-        formData.append("path", tempFile.file);
-        formData.append("creation_date", this.getDate());
 
-        console.log("avant formData", JSON.stringify(Array.from(formData.entries())));
-
-        return fetch("http://localhost:3000/upload", {
-          method: "POST",
-          body: formData,
-        }) /* eslint-disable */
-          .then((response) => response.json())
-          .then((data) => {
-            console.log("File uploaded successfully", data);
-            /* eslint-disable */ 
-            $('#addFormModal').modal('hide');
-          })
-          .catch((error) => {
-            console.error("Error uploading file", error);
-            throw new Error("Une erreur s'est produite lors de l'envoi du fichier.");
-          });
-          
-          /* eslint-disable */
-          this.closeForm(); // Fermer le formulaire modal
-          this.refreshDocumentList(); // Rafraîchir la liste des documents
-      };
-
-      const uploadFiles = async () => {
-        for (const tempFile of this.tempFiles) {
-          try {
-            await uploadFile(tempFile);
-          } catch (error) {
-            this.errorMessage = error.message;
-            return;
-          }
-        }
-          // Ici, vérifiez s'il n'y a pas d'erreur
-        if (!this.errorMessage) {
-        this.showModal = false; // Fermer le formulaire modal
-        this.refreshDocumentList(); // Mettre à jour la liste des documents
-        // Tous les fichiers ont été téléchargés avec succès
-        this.tempFiles = [];
-        // Afficher le message avec Vue-Sweetalert2
-        this.$swal({
-          title: 'Succès',
-          text: this.successMessage,
-          icon: 'success',
-          timer: 2000,
-          showConfirmButton: false
-        });
-        this.showSuccessMessage(); // Ajoutez cet appel ici
-        this.selectedDocumentType = { type_documentID: null, type_name: null, searchText: "" };
-        this.errorMessage = "";
-        this.closeForm();
-      }
-      };
-
-      uploadFiles();
-    },
-    
-    getFilePath(filename) {
-            // Vérifie si le chemin commence déjà par "uploads/"
-        if (filename.startsWith('uploads/')) {
-          // Si oui, retournez le chemin sans "uploads/" et spécifiez le port 3000
-          return `http://localhost:3000/${filename.replace('uploads/', '')}`;
-        } else {
-          // Sinon, retournez le chemin tel quel et spécifiez le port 3000
-          return `http://localhost:3000/${filename}`;
-        }
-    },
     selectDocument(document) {
     // Vérifier si le document est déjà sélectionné
     if (this.selectedDocuments.includes(document)) {
@@ -464,13 +334,8 @@ export default {
       // Sélectionner le document
       this.selectedDocuments.push(document);
     }
-  },
-  },
-  mounted() {
-
-    
-
-  },
+  }, 
+},
 };
 </script>
 
@@ -497,29 +362,33 @@ export default {
   justify-content: space-between;
   align-items: center;
 }
-.full-width-header{
-  width: 100%;
-}
 .fixed-header {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 999;
+  z-index: 100;
+  /* Ajoutez les autres styles nécessaires pour le header */
 }
 .header-margin {
   margin-top: 30px;
 }
-
-.header-actions {
+.full-width-header{
+  width: 100%;
+}
+.document-count {
   display: flex;
-  justify-content: flex-start;
   align-items: center;
-}
-.header-actions.justify-start {
-  justify-content: flex-start;
+  justify-content: center;
+  width: fit-content;
+  padding: 10px;
+  background-color: #007bff;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
 }
 
+.document-count span {
+  margin-left: 5px;
+}
 .d-flex  {
   display: flex;
   align-items: center;

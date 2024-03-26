@@ -22,7 +22,7 @@
 //import HelloWorld from './components/HelloWorld.vue'
 //import DossierView from './components/DossierView.vue'
 //import DocumentView from './components/DocumentView.vue'
-import 'bootstrap/dist/css/bootstrap.min.css'
+window.bootstrap = require('bootstrap/dist/js/bootstrap.bundle.js');
 
 
 export default {
