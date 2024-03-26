@@ -64,7 +64,7 @@
                                                         {{ category.name_category }}
                                                     </label>
                                                 </div>
-                                                <button type="submit" class="btn btn-primary">Sauvegarder</button>
+                                                <button type="submit" class="btn btn-primary" @click="saveChanges(editedManager.agentID)">Sauvegarder</button>
                                             </form>
                                         </div>
                                     </div>
@@ -266,7 +266,7 @@ export default {
         selectedCategories: [], // Catégories sélectionnées pour l'agent en cours d'édition
         isAlreadyManager: false, // Propriété pour indiquer si l'agent est déjà un "manager"
         categoryIDs: [], // Déclarer categoryIDs comme une liste vide
-        managerSelectedCategories: [],
+        editedManagerCategories: [], 
     };
   },
   computed: {
@@ -364,28 +364,54 @@ export default {
        openEditModal(manager) {
             this.editedManager = { ...manager };
             
-    // Charger les catégories disponibles
-    fetch('http://10.1.44.36:3001/categories')
+    // Charger toutes les données de gestion des agents
+    fetch(`http://10.1.44.36:3001/gerer`)
         .then(response => response.json())
         .then(data => {
-            this.categories = data; // Mettre à jour la liste des catégories disponibles
-
-            // Charger les catégories associées au gestionnaire
-            fetch(`http://10.1.44.36:3001/gerer?agentID=${manager.agentID}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Mettre à jour les catégories associées au gestionnaire dans editedManagerCategories
-                    this.editedManagerCategories = data.map(item => item.categoryID);
-
-                    /* eslint-disable */
-                    $('#editManagerModal').modal('show'); // Afficher le modal une fois les données récupérées
-                })
-                .catch(error => {
-                    console.error('Erreur lors du chargement des catégories associées au gestionnaire:', error);
-                });
+            // Filtrer les données pour obtenir les informations spécifiques au manager actuel
+            const managerData = data.filter(item => item.agentID === manager.agentID);
+            if (managerData.length > 0) {
+                // Utiliser directement les catégories associées à ce manager à partir de managerData
+                this.editedManagerCategories = managerData.map(item => item.categoryID);
+                /* eslint-disable */
+                $('#editManagerModal').modal('show'); // Afficher le modal une fois les données récupérées
+            } else {
+                console.error('Aucune donnée trouvée pour ce manager dans "gerer"');
+            }
         })
         .catch(error => {
-            console.error('Erreur lors du chargement des catégories:', error);
+            console.error('Erreur lors de la récupération des informations du manager dans "gerer":', error);
+        });
+        },
+
+        // Méthode appelée lorsqu'on appuie sur le bouton "Sauvegarder"
+        saveChanges(agentID) {
+        // Préparez les données à mettre à jour
+        const updatedData = {
+            agentID: agentID,
+            categories: this.editedManagerCategories,
+            // Autres données à mettre à jour si nécessaire
+        };
+
+        // Envoyer la requête PUT pour mettre à jour les données du manager spécifique
+        fetch('http://10.1.44.36:3001/gerer', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatedData),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur lors de la mise à jour des catégories associées au manager');
+            }
+            // Traitez la réponse en cas de succès si nécessaire
+            // Ajoutez ici la logique pour fermer le modal
+            $('#editManagerModal').modal('hide');
+        })
+        .catch(error => {
+            console.error('Erreur lors de la mise à jour des catégories associées au manager:', error);
+            // Gérer les erreurs ici
         });
         },
 
